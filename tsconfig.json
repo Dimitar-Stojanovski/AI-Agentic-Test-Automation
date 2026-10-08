@@ -11,7 +11,11 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@pages/*": ["./src/ui/pages/*"],
+      "@utils/*": ["./src/utils/*"]
+    }
   },
   "include": ["playwright.config.ts", "src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "playwright-report", "test-results"]
