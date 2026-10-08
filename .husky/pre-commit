@@ -1,0 +1,6 @@
+npx lint-staged || {
+  echo ""
+  echo "Commit blocked: ESLint or Prettier check failed on staged files."
+  echo "Prettier has not been run on your changes. Run 'npm run format:fix', stage the result, and commit again."
+  exit 1
+}
