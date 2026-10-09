@@ -433,3 +433,5 @@ FodyWeavers.xsd
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
