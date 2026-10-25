@@ -59,6 +59,11 @@ design says, in the way the framework is structured, and nothing more.
 - If a test fails, report the failure faithfully. Distinguish "my implementation is wrong"
   (fix it) from "the application behaves differently from the design" (report it as a
   suspected defect or design mismatch, do not edit the expectation yourself).
+- Never force a test to pass. Do not bend the expectation, the test data, the locator
+  or the flow so that it matches what the application currently does, and do not add
+  retries, waits, conditional logic or workarounds whose only purpose is a green result.
+  A test that fails because the application differs from the design stays failing and is
+  recorded in the report file (section 8).
 - Do not hardcode catalog data (product names, prices, stock) beyond what the design says;
   the store is live and shared.
 - If a CAPTCHA or bot wall appears, stop and report it. Never bypass it.
@@ -157,17 +162,33 @@ Return a short summary to the main conversation:
 - Failures, with a clear verdict: implementation issue vs. suspected application defect or
   design mismatch.
 - Any structural change you propose and are waiting on the user to approve.
-- Any open-questions file you created and are waiting on a human to approve (section 8).
+- The report file you created (`test-designs/<feature>.report.md`) and, if it has open
+  questions, that you are waiting on a human to approve them (section 8).
 
-## 8. Open questions: stop until a human approves
+## 8. Report file: open questions and failing tests
+
+Whenever you have an open question or a test that fails for a reason other than your own
+implementation, raise it in a markdown report file `test-designs/<feature>.report.md`
+(create it only if there is something to flag; do not edit the design file itself). It has
+two sections, each omitted if empty:
+
+- `## Open questions` (see below)
+- `## Failing tests`: one entry per test with the TC ID, the test title, the failing step
+  and assertion, expected (from the design) vs. actual (observed), the error output in
+  brief, and your verdict (suspected application defect or design mismatch). Leave the
+  test failing as written. Do not propose or make a change that turns it green.
+
+The report file is a deliverable for a human to review. Keep it until the human has
+resolved its entries; it is not a scratch file for the clean-up step.
+
+### Open questions: stop until a human approves
 
 If you have any open question about the product or the test design (unclear or contradictory
 steps, an expected result marked "to be confirmed", missing test data, behaviour on the live
 page that differs from or is not covered by the design, an ambiguous requirement), **do not
 continue the implementation and do not guess.**
 
-1. Create a temporary markdown file `test-designs/<feature>.open-questions.md`. Do not edit
-   the design file itself.
+1. Write them in the `## Open questions` section of the report file.
 2. For each question write: an ID (`Q1`, `Q2`, ...), the affected TC ID(s) and step or
    expected-result bullet, the question stated precisely, what you observed on the live page
    (if relevant), the options you see, and your recommended answer. Leave an
@@ -181,9 +202,8 @@ continue the implementation and do not guess.**
    `Approved: yes` (relayed by the main conversation or visible in the file). Never answer
    or approve a question yourself.
 5. When resumed with approval, re-read the file, implement according to the answers, and
-   treat the answers as authoritative for those points. Then delete the open-questions file
-   as part of the clean-up step (it is the one temporary file that must survive until
-   approval, and must not be left behind afterwards).
+   treat the answers as authoritative for those points. Remove the answered questions from
+   the report file, and delete the file if nothing else is left in it.
 
 ## Never
 
@@ -199,5 +219,6 @@ continue the implementation and do not guess.**
 - Leave temporary or scratch files behind in the repository.
 - Add assertions (visibility, displayed, enabled, etc.) that the test design does not state.
 - Put conditional logic (`if`/ternaries) in page objects.
+- Force a failing test to pass, or hide a failure instead of recording it in the report file.
 - Continue implementing past an open question about the product or design, or approve your
   own open question, before a human has approved the answer.
