@@ -50,8 +50,8 @@ design says, in the way the framework is structured, and nothing more.
 
 - Use only steps, data, messages and expectations that are written in the test design. If a
   step is ambiguous, an expected result is "observed behaviour to be confirmed", test data
-  is missing, or an open question is unresolved, **do not guess**. Skip that test case,
-  leave it out of the code, and list it in your report with the exact question.
+  is missing, or an open question is unresolved, **do not guess**. Do not implement that
+  test case; raise it as an open question and stop as described in section 8.
 - Never invent a locator, label, URL, error message or timeout. Confirm every element
   against the live page (see section 4) before you write a locator for it.
 - Never weaken an assertion to make a test pass, and never add `test.skip`, `test.fixme`,
@@ -127,9 +127,11 @@ pattern is normal work and needs no consultation. Changing the pattern itself do
 ## 6. Workflow
 
 1. Read `CLAUDE.md` and the named `test-designs/<feature>.md`. Note any open questions.
+   If there are any, follow section 8 before writing code.
 2. Read the existing page objects, fixtures and specs that relate to the feature.
 3. Inspect the live page with `playwright-cli` for every element the steps touch, and
-   choose locators per section 4.
+   choose locators per section 4. If the live page raises a question about the product or
+   design, follow section 8.
 4. Implement: page object additions, fixture entry if a new page object, then the spec.
 5. Verify, in this order, and fix what you caused:
    - `npx tsc --noEmit -p tsconfig.json`
@@ -155,6 +157,33 @@ Return a short summary to the main conversation:
 - Failures, with a clear verdict: implementation issue vs. suspected application defect or
   design mismatch.
 - Any structural change you propose and are waiting on the user to approve.
+- Any open-questions file you created and are waiting on a human to approve (section 8).
+
+## 8. Open questions: stop until a human approves
+
+If you have any open question about the product or the test design (unclear or contradictory
+steps, an expected result marked "to be confirmed", missing test data, behaviour on the live
+page that differs from or is not covered by the design, an ambiguous requirement), **do not
+continue the implementation and do not guess.**
+
+1. Create a temporary markdown file `test-designs/<feature>.open-questions.md`. Do not edit
+   the design file itself.
+2. For each question write: an ID (`Q1`, `Q2`, ...), the affected TC ID(s) and step or
+   expected-result bullet, the question stated precisely, what you observed on the live page
+   (if relevant), the options you see, and your recommended answer. Leave an
+   `Answer:` line and an `Approved: no` line under each question for the human to fill in.
+3. Stop. Write no page objects, fixtures, specs or locators for the affected test cases, and
+   do not start work that depends on the answers. If the question blocks the whole feature,
+   stop entirely. If other test cases are demonstrably independent, you may finish only
+   those, and only if you say so in the file.
+4. Report back to the main conversation with the path of the file and the questions, then
+   end your turn. Do not proceed until a human has answered every question and set
+   `Approved: yes` (relayed by the main conversation or visible in the file). Never answer
+   or approve a question yourself.
+5. When resumed with approval, re-read the file, implement according to the answers, and
+   treat the answers as authoritative for those points. Then delete the open-questions file
+   as part of the clean-up step (it is the one temporary file that must survive until
+   approval, and must not be left behind afterwards).
 
 ## Never
 
@@ -170,3 +199,5 @@ Return a short summary to the main conversation:
 - Leave temporary or scratch files behind in the repository.
 - Add assertions (visibility, displayed, enabled, etc.) that the test design does not state.
 - Put conditional logic (`if`/ternaries) in page objects.
+- Continue implementing past an open question about the product or design, or approve your
+  own open question, before a human has approved the answer.
