@@ -1,4 +1,6 @@
 import { BasePage } from "@pages/basePage";
+import type { Locator } from "@playwright/test";
+import type { UserDetails } from "@utils/testData/users";
 
 export class RegisterPage extends BasePage {
   public readonly heading = this.page.getByRole("heading", {
@@ -40,50 +42,54 @@ export class RegisterPage extends BasePage {
   public readonly frontpageProductLinks = this.page.locator(
     'a[href^="/collections/frontpage/products/"]',
   );
-  private readonly headerSignUpLink = this.page.getByRole("link", {
-    name: "Sign up",
-  });
   private readonly breadcrumbHomeLink = this.breadcrumb.getByRole("link", {
     name: "Home",
   });
 
   async navigateToRegisterPage() {
-    await this.page.goto("/account/register");
-  }
-
-  async navigateToHomePage() {
-    await this.page.goto("/");
-  }
-
-  async clickHeaderSignUp() {
-    await this.clickOn(this.headerSignUpLink);
+    await this.navigateTo("/account/register");
   }
 
   async clickBreadcrumbHome() {
     await this.clickOn(this.breadcrumbHomeLink);
   }
 
-  async fillRegistrationForm(details: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    password?: string;
-  }) {
-    if (details.firstName !== undefined) {
-      await this.fillIn(this.firstNameInput, details.firstName);
+  async clickLabel(label: Locator) {
+    await this.clickOn(label);
+  }
+
+  async focusFirstName() {
+    await this.focusOn(this.firstNameInput);
+  }
+
+  async pressTab() {
+    await this.page.keyboard.press("Tab");
+  }
+
+  async fillRegistrationForm(details: Partial<UserDetails>) {
+    const fields = {
+      firstName: this.firstNameInput,
+      lastName: this.lastNameInput,
+      email: this.emailInput,
+      password: this.passwordInput,
+    };
+    for (const [name, value] of Object.entries(details)) {
+      await this.fillIn(fields[name as keyof typeof fields], value);
     }
-    if (details.lastName !== undefined) {
-      await this.fillIn(this.lastNameInput, details.lastName);
-    }
-    if (details.email !== undefined) {
-      await this.fillIn(this.emailInput, details.email);
-    }
-    if (details.password !== undefined) {
-      await this.fillIn(this.passwordInput, details.password);
-    }
+  }
+
+  // The browser's own validation text for the email field ("" when it is valid)
+  emailValidationMessage() {
+    return this.emailInput.evaluate(
+      (input: HTMLInputElement) => input.validationMessage,
+    );
   }
 
   async submit() {
     await this.clickOn(this.createButton);
+  }
+
+  async submitWithEnter() {
+    await this.pressKey(this.passwordInput, "Enter");
   }
 }

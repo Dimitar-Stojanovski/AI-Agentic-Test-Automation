@@ -1,4 +1,5 @@
 import { BasePage } from "@pages/basePage";
+import { parsePrice } from "@utils/formatters";
 
 export class ProductPage extends BasePage {
   // The logo is also a level 1 heading, but it contains an image
@@ -24,20 +25,35 @@ export class ProductPage extends BasePage {
   });
 
   async navigateToProduct(handle: string) {
-    await this.page.goto(`/products/${handle}`);
+    await this.navigateTo(`/products/${handle}`);
+  }
+
+  // The unit price shown on the page, as a number
+  async unitPrice() {
+    return parsePrice(await this.price.innerText());
   }
 
   async selectSize(size: string) {
     await this.selectFromDropdown(this.sizeDropdown, size);
   }
 
-  async addToCart() {
-    // The add is an ajax call; waiting for it avoids racing the next navigation
-    const added = this.page.waitForResponse((response) =>
-      response.url().includes("/cart/add"),
-    );
-    await this.clickOn(this.addToCartButton);
-    await added;
+  async addToCart(times = 1) {
+    for (let i = 0; i < times; i++) {
+      // The add is an ajax call; waiting for it avoids racing the next navigation
+      const added = this.page.waitForResponse((response) =>
+        response.url().includes("/cart/add"),
+      );
+      await this.clickOn(this.addToCartButton);
+      await added;
+    }
+  }
+
+  // Opens a product page, adds it to the cart and returns the unit price shown
+  async addProductToCart(handle: string, times = 1) {
+    await this.navigateToProduct(handle);
+    const price = await this.unitPrice();
+    await this.addToCart(times);
+    return price;
   }
 
   async clickSoldOut() {

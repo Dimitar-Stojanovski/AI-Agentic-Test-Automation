@@ -1,34 +1,13 @@
 import { test, expect } from "@utils/uiUtils/uiFixtures";
-import type { ProductPage } from "@pages/productPage";
-
-// Product handles are the only catalog data used. Prices are read from the
-// product pages, never hardcoded.
-const HEELS = { handle: "flower-print-jeans", name: "Black heels" };
-const SANDALS = { handle: "bronze-sandals", name: "Bronze sandals" };
-const TOP = { handle: "striped-top", name: "Striped top" };
-
-const toNumber = (text: string) => Number(text.replace(/[^0-9.]/g, ""));
-const money = (amount: number) =>
-  `£${amount.toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-const cartCount = (count: number) => `My Cart (${count})`;
-const cartTotal = (amount: number) => `Total ${money(amount)}`;
-
-// Opens a product page, adds it to the cart and returns the unit price shown
-const addProduct = async (
-  productPage: ProductPage,
-  handle: string,
-  times = 1,
-) => {
-  await productPage.navigateToProduct(handle);
-  const price = toNumber(await productPage.price.innerText());
-  for (let i = 0; i < times; i++) {
-    await productPage.addToCart();
-  }
-  return price;
-};
+import { cartCountLabel, cartTotalLabel, formatMoney } from "@utils/formatters";
+import {
+  HEELS,
+  INVALID_QUANTITIES,
+  LARGE_QUANTITY,
+  SANDALS,
+  SIZES,
+  TOP,
+} from "@utils/testData/products";
 
 test.describe("Add to cart", () => {
   test("TC-CART-01: Add an in-stock product with default options", async ({
@@ -42,21 +21,21 @@ test.describe("Add to cart", () => {
     await catalogPage.navigateToCatalog();
     await catalogPage.openProduct(HEELS.name);
     const title = await productPage.title.innerText();
-    const price = toNumber(await productPage.price.innerText());
+    const price = await productPage.unitPrice();
 
     // Step 4
     await productPage.addToCart();
-    await expect(page).toHaveURL(/\/products\/flower-print-jeans/);
-    await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+    await expect(page).toHaveURL(new RegExp(`/products/${HEELS.handle}`));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
 
     // Step 5
     await cartPage.navigateToCart();
     const row = cartPage.rowFor(title);
     await expect(row).toHaveCount(1);
-    await expect(cartPage.unitPriceOf(row)).toHaveText(money(price));
+    await expect(cartPage.unitPriceOf(row)).toHaveText(formatMoney(price));
     await expect(cartPage.quantityOf(row)).toHaveValue("1");
-    await expect(cartPage.lineTotalOf(row)).toHaveText(money(price));
-    await expect(cartPage.total).toHaveText(cartTotal(price));
+    await expect(cartPage.lineTotalOf(row)).toHaveText(formatMoney(price));
+    await expect(cartPage.total).toHaveText(cartTotalLabel(price));
   });
 
   test("TC-CART-02: Add a product with a chosen size and color", async ({
@@ -64,16 +43,16 @@ test.describe("Add to cart", () => {
     cartPage,
   }) => {
     await productPage.navigateToProduct(HEELS.handle);
-    const price = toNumber(await productPage.price.innerText());
+    const price = await productPage.unitPrice();
     const color = await productPage.colorDropdown.inputValue();
-    await productPage.selectSize("M");
+    await productPage.selectSize(SIZES.medium);
     await productPage.addToCart();
     await cartPage.navigateToCart();
 
-    const row = cartPage.rowFor(`${HEELS.name} - M / ${color}`);
+    const row = cartPage.rowFor(`${HEELS.name} - ${SIZES.medium} / ${color}`);
     await expect(row).toHaveCount(1);
     await expect(cartPage.quantityOf(row)).toHaveValue("1");
-    await expect(cartPage.unitPriceOf(row)).toHaveText(money(price));
+    await expect(cartPage.unitPriceOf(row)).toHaveText(formatMoney(price));
   });
 
   test("TC-CART-03: Add the same variant twice increases the quantity", async ({
@@ -81,15 +60,15 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    const price = await addProduct(productPage, HEELS.handle, 2);
+    const price = await productPage.addProductToCart(HEELS.handle, 2);
     await cartPage.navigateToCart();
 
-    await expect(navigationPage.cartLink).toHaveText(cartCount(2));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(2));
     const row = cartPage.rowFor(HEELS.name);
     await expect(cartPage.rows).toHaveCount(1);
     await expect(cartPage.quantityOf(row)).toHaveValue("2");
-    await expect(cartPage.lineTotalOf(row)).toHaveText(money(price * 2));
-    await expect(cartPage.total).toHaveText(cartTotal(price * 2));
+    await expect(cartPage.lineTotalOf(row)).toHaveText(formatMoney(price * 2));
+    await expect(cartPage.total).toHaveText(cartTotalLabel(price * 2));
   });
 
   test("TC-CART-04: Different variants of one product create separate rows", async ({
@@ -98,20 +77,20 @@ test.describe("Add to cart", () => {
     cartPage,
   }) => {
     await productPage.navigateToProduct(HEELS.handle);
-    const price = toNumber(await productPage.price.innerText());
-    await productPage.selectSize("M");
+    const price = await productPage.unitPrice();
+    await productPage.selectSize(SIZES.medium);
     await productPage.addToCart();
-    await productPage.selectSize("L");
+    await productPage.selectSize(SIZES.large);
     await productPage.addToCart();
     await cartPage.navigateToCart();
 
-    const rowM = cartPage.rowFor(`${HEELS.name} - M`);
-    const rowL = cartPage.rowFor(`${HEELS.name} - L`);
+    const rowM = cartPage.rowFor(`${HEELS.name} - ${SIZES.medium}`);
+    const rowL = cartPage.rowFor(`${HEELS.name} - ${SIZES.large}`);
     await expect(cartPage.rows).toHaveCount(2);
     await expect(cartPage.quantityOf(rowM)).toHaveValue("1");
     await expect(cartPage.quantityOf(rowL)).toHaveValue("1");
-    await expect(navigationPage.cartLink).toHaveText(cartCount(2));
-    await expect(cartPage.total).toHaveText(cartTotal(price * 2));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(2));
+    await expect(cartPage.total).toHaveText(cartTotalLabel(price * 2));
   });
 
   test("TC-CART-05: Add several different products", async ({
@@ -119,21 +98,22 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    const priceA = await addProduct(productPage, HEELS.handle);
-    const priceB = await addProduct(productPage, SANDALS.handle);
+    const priceA = await productPage.addProductToCart(HEELS.handle);
+    const priceB = await productPage.addProductToCart(SANDALS.handle);
     await cartPage.navigateToCart();
 
     await expect(cartPage.rows).toHaveCount(2);
     await expect(cartPage.unitPriceOf(cartPage.rowFor(HEELS.name))).toHaveText(
-      money(priceA),
+      formatMoney(priceA),
     );
     await expect(
       cartPage.unitPriceOf(cartPage.rowFor(SANDALS.name)),
-    ).toHaveText(money(priceB));
-    await expect(navigationPage.cartLink).toHaveText(cartCount(2));
-    await expect(cartPage.total).toHaveText(cartTotal(priceA + priceB));
+    ).toHaveText(formatMoney(priceB));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(2));
+    await expect(cartPage.total).toHaveText(cartTotalLabel(priceA + priceB));
   });
 
+  // Needs at least one sold-out product in the store catalog
   test("TC-CART-06: Sold-out product cannot be added", async ({
     catalogPage,
     productPage,
@@ -146,7 +126,7 @@ test.describe("Add to cart", () => {
 
     await expect(productPage.soldOutButton).toHaveText("Sold Out");
     await expect(productPage.soldOutButton).toBeDisabled();
-    await expect(navigationPage.cartLink).toHaveText(cartCount(0));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(0));
 
     await cartPage.navigateToCart();
     await expect(cartPage.emptyMessage).toBeVisible();
@@ -158,17 +138,17 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    await addProduct(productPage, HEELS.handle);
+    await productPage.addProductToCart(HEELS.handle);
 
     await navigationPage.openHome();
-    await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
     await navigationPage.openCatalog();
-    await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
     await navigationPage.openAboutUs();
-    await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
 
     await page.reload();
-    await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
 
     await cartPage.navigateToCart();
     await expect(cartPage.quantityOf(cartPage.rowFor(HEELS.name))).toHaveValue(
@@ -187,7 +167,7 @@ test.describe("Add to cart", () => {
     await expect(cartPage.rows).toHaveCount(0);
     await expect(cartPage.updateButton).toHaveCount(0);
     await expect(cartPage.checkOutButton).toHaveCount(0);
-    await expect(navigationPage.cartLink).toHaveText(cartCount(0));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(0));
 
     await cartPage.clickContinueShopping();
     await expect(page).toHaveURL("/collections/all");
@@ -198,7 +178,7 @@ test.describe("Add to cart", () => {
     productPage,
     cartPage,
   }) => {
-    await addProduct(productPage, HEELS.handle);
+    await productPage.addProductToCart(HEELS.handle);
     await cartPage.navigateToCart();
 
     await cartPage.clickContinueShopping();
@@ -215,7 +195,7 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    const price = await addProduct(productPage, HEELS.handle);
+    const price = await productPage.addProductToCart(HEELS.handle);
     await cartPage.navigateToCart();
 
     const row = cartPage.rowFor(HEELS.name);
@@ -223,9 +203,9 @@ test.describe("Add to cart", () => {
     await cartPage.update();
 
     await expect(cartPage.quantityOf(row)).toHaveValue("3");
-    await expect(cartPage.lineTotalOf(row)).toHaveText(money(price * 3));
-    await expect(cartPage.total).toHaveText(cartTotal(price * 3));
-    await expect(navigationPage.cartLink).toHaveText(cartCount(3));
+    await expect(cartPage.lineTotalOf(row)).toHaveText(formatMoney(price * 3));
+    await expect(cartPage.total).toHaveText(cartTotalLabel(price * 3));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(3));
   });
 
   test("TC-CART-11: Decrease quantity and update", async ({
@@ -233,7 +213,7 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    const price = await addProduct(productPage, HEELS.handle, 3);
+    const price = await productPage.addProductToCart(HEELS.handle, 3);
     await cartPage.navigateToCart();
 
     const row = cartPage.rowFor(HEELS.name);
@@ -241,9 +221,9 @@ test.describe("Add to cart", () => {
     await cartPage.update();
 
     await expect(cartPage.quantityOf(row)).toHaveValue("1");
-    await expect(cartPage.lineTotalOf(row)).toHaveText(money(price));
-    await expect(cartPage.total).toHaveText(cartTotal(price));
-    await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+    await expect(cartPage.lineTotalOf(row)).toHaveText(formatMoney(price));
+    await expect(cartPage.total).toHaveText(cartTotalLabel(price));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
   });
 
   test("TC-CART-12: Update one line in a multi-product cart", async ({
@@ -251,8 +231,8 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    const priceA = await addProduct(productPage, HEELS.handle);
-    const priceB = await addProduct(productPage, SANDALS.handle);
+    const priceA = await productPage.addProductToCart(HEELS.handle);
+    const priceB = await productPage.addProductToCart(SANDALS.handle);
     await cartPage.navigateToCart();
 
     const rowA = cartPage.rowFor(HEELS.name);
@@ -261,10 +241,14 @@ test.describe("Add to cart", () => {
     await cartPage.update();
 
     await expect(cartPage.quantityOf(rowA)).toHaveValue("2");
-    await expect(cartPage.lineTotalOf(rowA)).toHaveText(money(priceA * 2));
+    await expect(cartPage.lineTotalOf(rowA)).toHaveText(
+      formatMoney(priceA * 2),
+    );
     await expect(cartPage.quantityOf(rowB)).toHaveValue("1");
-    await expect(cartPage.total).toHaveText(cartTotal(priceA * 2 + priceB));
-    await expect(navigationPage.cartLink).toHaveText(cartCount(3));
+    await expect(cartPage.total).toHaveText(
+      cartTotalLabel(priceA * 2 + priceB),
+    );
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(3));
   });
 
   test("TC-CART-13: Quantity set to 0 removes the line", async ({
@@ -272,8 +256,8 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    await addProduct(productPage, HEELS.handle);
-    const priceB = await addProduct(productPage, SANDALS.handle);
+    await productPage.addProductToCart(HEELS.handle);
+    const priceB = await productPage.addProductToCart(SANDALS.handle);
     await cartPage.navigateToCart();
 
     await cartPage.setQuantity(cartPage.rowFor(HEELS.name), "0");
@@ -283,8 +267,8 @@ test.describe("Add to cart", () => {
     await expect(
       cartPage.quantityOf(cartPage.rowFor(SANDALS.name)),
     ).toHaveValue("1");
-    await expect(cartPage.total).toHaveText(cartTotal(priceB));
-    await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+    await expect(cartPage.total).toHaveText(cartTotalLabel(priceB));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
   });
 
   test("TC-CART-14: Invalid quantity values are rejected", async ({
@@ -293,20 +277,22 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    const price = await addProduct(productPage, HEELS.handle);
+    const price = await productPage.addProductToCart(HEELS.handle);
     await cartPage.navigateToCart();
     const row = cartPage.rowFor(HEELS.name);
 
     // Steps 2-5: "abc", "-1", "2.5" and an empty value
-    for (const invalidValue of ["abc", "-1", "2.5", ""]) {
-      await cartPage.setQuantity(row, invalidValue);
-      await cartPage.update();
+    for (const invalidValue of INVALID_QUANTITIES) {
+      await test.step(`Quantity "${invalidValue}" is rejected`, async () => {
+        await cartPage.setQuantity(row, invalidValue);
+        await cartPage.update();
 
-      await expect(page).toHaveURL("/cart");
-      await expect(cartPage.quantityOf(row)).toHaveValue("1");
-      await expect(cartPage.lineTotalOf(row)).toHaveText(money(price));
-      await expect(cartPage.total).toHaveText(cartTotal(price));
-      await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+        await expect(page).toHaveURL("/cart");
+        await expect(cartPage.quantityOf(row)).toHaveValue("1");
+        await expect(cartPage.lineTotalOf(row)).toHaveText(formatMoney(price));
+        await expect(cartPage.total).toHaveText(cartTotalLabel(price));
+        await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
+      });
     }
   });
 
@@ -316,18 +302,24 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    const price = await addProduct(productPage, HEELS.handle);
+    const price = await productPage.addProductToCart(HEELS.handle);
     await cartPage.navigateToCart();
 
     const row = cartPage.rowFor(HEELS.name);
-    await cartPage.setQuantity(row, "99999");
+    await cartPage.setQuantity(row, String(LARGE_QUANTITY));
     await cartPage.update();
 
-    await expect(cartPage.quantityOf(row)).toHaveValue("99999");
-    await expect(cartPage.lineTotalOf(row)).toHaveText(money(price * 99999));
-    await expect(navigationPage.cartLink).toHaveText(cartCount(99999));
+    await expect(cartPage.quantityOf(row)).toHaveValue(String(LARGE_QUANTITY));
+    await expect(cartPage.lineTotalOf(row)).toHaveText(
+      formatMoney(price * LARGE_QUANTITY),
+    );
+    await expect(navigationPage.cartLink).toHaveText(
+      cartCountLabel(LARGE_QUANTITY),
+    );
     await expect(page).toHaveURL("/cart");
-    await expect(cartPage.total).toHaveText(cartTotal(price * 99999));
+    await expect(cartPage.total).toHaveText(
+      cartTotalLabel(price * LARGE_QUANTITY),
+    );
   });
 
   test('TC-CART-16: Remove a line with the "x" link', async ({
@@ -335,8 +327,8 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    await addProduct(productPage, HEELS.handle);
-    const priceB = await addProduct(productPage, SANDALS.handle);
+    await productPage.addProductToCart(HEELS.handle);
+    const priceB = await productPage.addProductToCart(SANDALS.handle);
     await cartPage.navigateToCart();
 
     await cartPage.remove(cartPage.rowFor(HEELS.name));
@@ -345,8 +337,8 @@ test.describe("Add to cart", () => {
     await expect(
       cartPage.quantityOf(cartPage.rowFor(SANDALS.name)),
     ).toHaveValue("1");
-    await expect(cartPage.total).toHaveText(cartTotal(priceB));
-    await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+    await expect(cartPage.total).toHaveText(cartTotalLabel(priceB));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
   });
 
   test("TC-CART-17: Remove the last item returns to the empty state", async ({
@@ -354,14 +346,14 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    await addProduct(productPage, HEELS.handle);
+    await productPage.addProductToCart(HEELS.handle);
     await cartPage.navigateToCart();
 
     await cartPage.remove(cartPage.rowFor(HEELS.name));
 
     await expect(cartPage.emptyMessage).toBeVisible();
     await expect(cartPage.continueShoppingLink).toBeVisible();
-    await expect(navigationPage.cartLink).toHaveText(cartCount(0));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(0));
     await expect(cartPage.checkOutButton).toHaveCount(0);
   });
 
@@ -371,29 +363,34 @@ test.describe("Add to cart", () => {
     cartPage,
   }) => {
     await productPage.navigateToProduct(HEELS.handle);
-    const priceHeels = toNumber(await productPage.price.innerText());
-    await productPage.selectSize("M");
+    const priceHeels = await productPage.unitPrice();
+    await productPage.selectSize(SIZES.medium);
+    await productPage.addToCart(2);
+    await productPage.selectSize(SIZES.large);
     await productPage.addToCart();
-    await productPage.addToCart();
-    await productPage.selectSize("L");
-    await productPage.addToCart();
-    const priceTop = await addProduct(productPage, TOP.handle);
+    const priceTop = await productPage.addProductToCart(TOP.handle);
     await cartPage.navigateToCart();
 
-    const rowM = cartPage.rowFor(`${HEELS.name} - M`);
-    const rowL = cartPage.rowFor(`${HEELS.name} - L`);
+    const rowM = cartPage.rowFor(`${HEELS.name} - ${SIZES.medium}`);
+    const rowL = cartPage.rowFor(`${HEELS.name} - ${SIZES.large}`);
     const rowTop = cartPage.rowFor(TOP.name);
     await expect(cartPage.rows).toHaveCount(3);
     await expect(cartPage.quantityOf(rowM)).toHaveValue("2");
     await expect(cartPage.quantityOf(rowL)).toHaveValue("1");
     await expect(cartPage.quantityOf(rowTop)).toHaveValue("1");
-    await expect(cartPage.lineTotalOf(rowM)).toHaveText(money(priceHeels * 2));
-    await expect(cartPage.lineTotalOf(rowL)).toHaveText(money(priceHeels));
-    await expect(cartPage.lineTotalOf(rowTop)).toHaveText(money(priceTop));
-    await expect(cartPage.total).toHaveText(
-      cartTotal(priceHeels * 3 + priceTop),
+    await expect(cartPage.lineTotalOf(rowM)).toHaveText(
+      formatMoney(priceHeels * 2),
     );
-    await expect(navigationPage.cartLink).toHaveText(cartCount(4));
+    await expect(cartPage.lineTotalOf(rowL)).toHaveText(
+      formatMoney(priceHeels),
+    );
+    await expect(cartPage.lineTotalOf(rowTop)).toHaveText(
+      formatMoney(priceTop),
+    );
+    await expect(cartPage.total).toHaveText(
+      cartTotalLabel(priceHeels * 3 + priceTop),
+    );
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(4));
   });
 
   test("TC-CART-19: Proceed to checkout from the cart", async ({
@@ -402,7 +399,7 @@ test.describe("Add to cart", () => {
     cartPage,
     checkoutPage,
   }) => {
-    await addProduct(productPage, HEELS.handle);
+    await productPage.addProductToCart(HEELS.handle);
     await cartPage.navigateToCart();
 
     await cartPage.checkOut();
@@ -420,8 +417,8 @@ test.describe("Add to cart", () => {
     checkoutPage,
   }) => {
     // Step 1
-    await addProduct(productPage, HEELS.handle, 2);
-    await addProduct(productPage, SANDALS.handle);
+    await productPage.addProductToCart(HEELS.handle, 2);
+    await productPage.addProductToCart(SANDALS.handle);
 
     // Step 2: note products, quantities and the cart total
     await cartPage.navigateToCart();
@@ -461,7 +458,7 @@ test.describe("Add to cart", () => {
     productPage,
     navigationPage,
   }) => {
-    await addProduct(productPage, HEELS.handle);
+    await productPage.addProductToCart(HEELS.handle);
 
     await navigationPage.clickHeaderCheckOut();
 
@@ -475,7 +472,7 @@ test.describe("Add to cart", () => {
     navigationPage,
     cartPage,
   }) => {
-    await addProduct(productPage, HEELS.handle);
+    await productPage.addProductToCart(HEELS.handle);
     await cartPage.navigateToCart();
     await cartPage.checkOut();
 
@@ -485,7 +482,7 @@ test.describe("Add to cart", () => {
     await expect(cartPage.quantityOf(cartPage.rowFor(HEELS.name))).toHaveValue(
       "1",
     );
-    await expect(navigationPage.cartLink).toHaveText(cartCount(1));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(1));
   });
 
   test("TC-CART-23: Checkout with an empty cart", async ({
@@ -496,7 +493,7 @@ test.describe("Add to cart", () => {
     await cartPage.navigateToCart();
     await expect(cartPage.checkOutButton).toHaveCount(0);
 
-    await page.goto("/checkout");
+    await checkoutPage.navigateToCheckout();
 
     // Observed behaviour: the shopper is sent to the home page
     await expect(page).toHaveURL("/");
@@ -518,7 +515,7 @@ test.describe("Add to cart", () => {
 
     // Steps 2-3
     await catalogPage.openProduct(HEELS.name);
-    const priceA = toNumber(await productPage.price.innerText());
+    const priceA = await productPage.unitPrice();
     await productPage.addToCart();
     await navigationPage.openCatalog();
     await catalogPage.openProduct(SANDALS.name);
@@ -530,19 +527,21 @@ test.describe("Add to cart", () => {
     const rowB = cartPage.rowFor(SANDALS.name);
     await expect(cartPage.quantityOf(rowA)).toHaveValue("1");
     await expect(cartPage.quantityOf(rowB)).toHaveValue("1");
-    await expect(navigationPage.cartLink).toHaveText(cartCount(2));
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(2));
 
     // Step 5
     await cartPage.setQuantity(rowA, "2");
     await cartPage.update();
     await expect(cartPage.quantityOf(rowA)).toHaveValue("2");
-    await expect(cartPage.lineTotalOf(rowA)).toHaveText(money(priceA * 2));
-    await expect(navigationPage.cartLink).toHaveText(cartCount(3));
+    await expect(cartPage.lineTotalOf(rowA)).toHaveText(
+      formatMoney(priceA * 2),
+    );
+    await expect(navigationPage.cartLink).toHaveText(cartCountLabel(3));
 
     // Step 6
     await cartPage.remove(rowB);
     await expect(cartPage.rows).toHaveCount(1);
-    await expect(cartPage.total).toHaveText(cartTotal(priceA * 2));
+    await expect(cartPage.total).toHaveText(cartTotalLabel(priceA * 2));
 
     // Step 7
     await cartPage.checkOut();
