@@ -19,7 +19,7 @@ Husky runs `.husky/pre-commit` → `lint-staged` (config in `package.json`): ESL
 
 ## Environment
 
-`playwright.config.ts` loads `<TEST_ENV>.env` (default `qa.env`) via dotenv and exposes `BASE_URL` as Playwright's `baseURL`. Page objects therefore navigate with root-relative paths (`page.goto("/account/login")`). `*.env` is gitignored, so `qa.env` must exist locally (target: `https://sauce-demo.myshopify.com/`). Select another environment with `TEST_ENV=<name>` and a matching `<name>.env`.
+`playwright.config.ts` loads `<TEST_ENV>.env` (default `qa.env`) via dotenv and exposes `BASE_URL` as Playwright's `baseURL`. Page objects therefore navigate with root-relative paths (`page.goto("/account/login")`). `*.env` is gitignored, so `qa.env` must exist locally (target: `https://sauce-demo.myshopify.com/`). Copy `qa.env.example` to `qa.env` to start. The login tests also need `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` (a dedicated registered account, read through `testAccount()` in `users.ts`). Select another environment with `TEST_ENV=<name>` and a matching `<name>.env`.
 
 ## Architecture
 

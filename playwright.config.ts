@@ -5,6 +5,10 @@ import path from "path";
 const testEnv = (process.env.TEST_ENV || "qa").toLowerCase();
 dotenv.config({ path: path.resolve(__dirname, `${testEnv}.env`) });
 
+if (!process.env.BASE_URL) {
+  throw new Error(`BASE_URL is not set; check that ${testEnv}.env exists`);
+}
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -23,7 +27,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: process.env.BASE_URL!,
+    baseURL: process.env.BASE_URL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",

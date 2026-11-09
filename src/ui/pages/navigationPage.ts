@@ -69,6 +69,10 @@ export class NavigationPage extends BasePage {
     await this.clickOn(this.aboutUsLink);
   }
 
+  async openLogIn() {
+    await this.clickOn(this.headerLogInLink);
+  }
+
   async openSignUp() {
     await this.clickOn(this.headerSignUpLink);
   }

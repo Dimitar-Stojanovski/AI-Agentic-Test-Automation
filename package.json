@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "format:fix": "npx prettier . --write",
     "lint": "eslint .",
     "prepare": "husky"
