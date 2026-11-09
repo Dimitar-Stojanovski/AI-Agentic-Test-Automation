@@ -29,6 +29,10 @@ export class CheckoutPage extends BasePage {
     .getByRole("table", { name: "Cost summary" })
     .getByRole("row", { name: /^Total/ });
 
+  async navigateToCheckout() {
+    await this.navigateTo("/checkout");
+  }
+
   orderSummaryRowFor(title: string) {
     return this.orderSummaryRows.filter({ hasText: title });
   }

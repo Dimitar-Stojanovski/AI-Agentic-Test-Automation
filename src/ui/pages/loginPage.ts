@@ -10,10 +10,11 @@ export class LoginPage extends BasePage {
   private readonly signInButton = this.page.getByRole("button", {
     name: "Sign In",
   });
+  // The error box has no role or accessible name in the markup, so CSS is used
   public readonly errorMessage = this.page.locator("#customer_login .errors");
 
   async navigateToLoginPage() {
-    await this.page.goto("/account/login");
+    await this.navigateTo("/account/login");
   }
 
   async login(email: string, password: string) {

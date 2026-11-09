@@ -1,14 +1,5 @@
 import { test, expect } from "@utils/uiUtils/uiFixtures";
-import type { Locator } from "@playwright/test";
-
-const allImagesLoaded = (images: Locator) =>
-  images.evaluateAll((elements) =>
-    elements.every(
-      (el) =>
-        (el as HTMLImageElement).complete &&
-        (el as HTMLImageElement).naturalWidth > 0,
-    ),
-  );
+import { allImagesLoaded, boxOf } from "@utils/uiUtils/locatorUtils";
 
 test.describe("Home page", () => {
   test.beforeEach(async ({ homePage }) => {
@@ -28,14 +19,14 @@ test.describe("Home page", () => {
   });
 
   test("TC-HOME-02: Header links and cart summary are displayed", async ({
-    homePage,
+    navigationPage,
   }) => {
-    await expect(homePage.headerSearchLink).toBeVisible();
-    await expect(homePage.headerAboutUsLink).toBeVisible();
-    await expect(homePage.headerLogInLink).toBeVisible();
-    await expect(homePage.headerSignUpLink).toBeVisible();
-    await expect(homePage.cartLink).toBeVisible();
-    await expect(homePage.checkOutLink).toBeVisible();
+    await expect(navigationPage.headerSearchLink).toBeVisible();
+    await expect(navigationPage.headerAboutUsLink).toBeVisible();
+    await expect(navigationPage.headerLogInLink).toBeVisible();
+    await expect(navigationPage.headerSignUpLink).toBeVisible();
+    await expect(navigationPage.cartLink).toBeVisible();
+    await expect(navigationPage.headerCheckOutLink).toBeVisible();
   });
 
   test("TC-HOME-03: Header search box is present", async ({ homePage }) => {
@@ -54,8 +45,10 @@ test.describe("Home page", () => {
     );
   });
 
-  test("TC-HOME-05: Sidebar menu items are displayed", async ({ homePage }) => {
-    await expect(homePage.menuItems).toHaveText([
+  test("TC-HOME-05: Sidebar menu items are displayed", async ({
+    navigationPage,
+  }) => {
+    await expect(navigationPage.menuItems).toHaveText([
       "Home",
       "Catalog",
       "Blog",
@@ -65,12 +58,14 @@ test.describe("Home page", () => {
     ]);
   });
 
-  test("TC-HOME-06: Social media icons are displayed", async ({ homePage }) => {
-    await expect(homePage.facebookIcon).toBeVisible();
-    await expect(homePage.twitterIcon).toBeVisible();
-    await expect(homePage.instagramIcon).toBeVisible();
-    await expect(homePage.pinterestIcon).toBeVisible();
-    await expect(homePage.rssIcon).toBeVisible();
+  test("TC-HOME-06: Social media icons are displayed", async ({
+    navigationPage,
+  }) => {
+    await expect(navigationPage.facebookIcon).toBeVisible();
+    await expect(navigationPage.twitterIcon).toBeVisible();
+    await expect(navigationPage.instagramIcon).toBeVisible();
+    await expect(navigationPage.pinterestIcon).toBeVisible();
+    await expect(navigationPage.rssIcon).toBeVisible();
   });
 
   test("TC-HOME-07: Featured products are displayed", async ({ homePage }) => {
@@ -78,11 +73,11 @@ test.describe("Home page", () => {
 
     await expect.poll(() => allImagesLoaded(homePage.productImages)).toBe(true);
     for (const tile of await homePage.productTiles.all()) {
-      const image = await tile.getByRole("img").boundingBox();
-      const name = await tile.getByRole("heading", { level: 3 }).boundingBox();
-      const price = await tile.getByRole("heading", { level: 4 }).boundingBox();
-      expect(image!.y + image!.height).toBeLessThanOrEqual(name!.y);
-      expect(name!.y + name!.height).toBeLessThanOrEqual(price!.y);
+      const image = await boxOf(tile.getByRole("img"));
+      const name = await boxOf(tile.getByRole("heading", { level: 3 }));
+      const price = await boxOf(tile.getByRole("heading", { level: 4 }));
+      expect(image.y + image.height).toBeLessThanOrEqual(name.y);
+      expect(name.y + name.height).toBeLessThanOrEqual(price.y);
     }
 
     for (const price of await homePage.productPrices.all()) {
@@ -122,6 +117,7 @@ test.describe("Home page", () => {
 
   test("TC-HOME-10: Icon links and icon buttons have accessible names", async ({
     homePage,
+    navigationPage,
   }) => {
     // Known application defect: the search button is named "Submit" and the
     // social icon links have no accessible name. Remove once fixed.
@@ -130,10 +126,14 @@ test.describe("Home page", () => {
     // names Playwright reads from the accessibility tree.
     await expect(homePage.searchButton).toHaveAccessibleName("Search");
 
-    await expect(homePage.facebookIcon).toHaveAccessibleName("Facebook");
-    await expect(homePage.twitterIcon).toHaveAccessibleName("Twitter");
-    await expect(homePage.instagramIcon).toHaveAccessibleName("Instagram");
-    await expect(homePage.pinterestIcon).toHaveAccessibleName("Pinterest");
-    await expect(homePage.rssIcon).toHaveAccessibleName("RSS");
+    await expect(navigationPage.facebookIcon).toHaveAccessibleName("Facebook");
+    await expect(navigationPage.twitterIcon).toHaveAccessibleName("Twitter");
+    await expect(navigationPage.instagramIcon).toHaveAccessibleName(
+      "Instagram",
+    );
+    await expect(navigationPage.pinterestIcon).toHaveAccessibleName(
+      "Pinterest",
+    );
+    await expect(navigationPage.rssIcon).toHaveAccessibleName("RSS");
   });
 });

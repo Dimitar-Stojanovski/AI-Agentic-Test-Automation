@@ -26,7 +26,7 @@ export class CartPage extends BasePage {
   });
 
   async navigateToCart() {
-    await this.page.goto("/cart");
+    await this.navigateTo("/cart");
   }
 
   rowFor(title: string) {
